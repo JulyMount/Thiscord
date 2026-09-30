@@ -7,17 +7,26 @@ const btnCall = document.getElementById('btn-call');
 const btnScreen = document.getElementById('btn-screen');
 const btnPip = document.getElementById('btn-pip');
 const btnFullscreen = document.getElementById('btn-fullscreen');
+
+const btnToggleMic = document.getElementById('btn-toggle-mic');
+const btnToggleCam = document.getElementById('btn-toggle-cam');
+const btnHangup = document.getElementById('btn-hangup');
+const callControls = document.getElementById('call-controls');
+
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
 
 let localStream = null;
+let currentCall = null;
+let isMicOn = true;
+let isCamOn = true;
 
 // Exibir o ID gerado pelo PeerJS
 peer.on('open', (id) => {
   myIdEl.innerText = id;
 });
 
-// Copiar ID para a área de transferência
+// Copiar ID
 btnCopy.addEventListener('click', () => {
   const currentId = myIdEl.innerText;
   if (currentId && currentId !== 'Gerando ID...') {
@@ -27,59 +36,136 @@ btnCopy.addEventListener('click', () => {
   }
 });
 
-// Receber chamadas/transmissões da outra pessoa
-peer.on('call', async (call) => {
-  if (!localStream) {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localVideo.srcObject = localStream;
-    } catch (e) {
-      console.log('Sem permissão de câmera/microfone local.');
-    }
+// Função para garantir captura completa de áudio e vídeo
+async function getMediaStream(isScreen = false) {
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
   }
-  call.answer(localStream);
-  call.on('stream', (remoteStream) => {
-    remoteVideo.srcObject = remoteStream;
-  });
+
+  if (isScreen) {
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    // Tenta pegar o áudio do microfone junto se quiser falar enquanto compartilha tela
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStream.getAudioTracks().forEach(track => screenStream.addTrack(track));
+    } catch (e) {
+      console.log('Sem permissão de mic adicional no compartilhamento.');
+    }
+    localStream = screenStream;
+  } else {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  }
+
+  localVideo.srcObject = localStream;
+  isMicOn = true;
+  isCamOn = true;
+  updateControlButtons();
+  return localStream;
+}
+
+// Receber chamadas (Garante que o áudio/vídeo local é capturado antes de responder)
+peer.on('call', async (call) => {
+  currentCall = call;
+  try {
+    const stream = await getMediaStream(false);
+    call.answer(stream);
+  } catch (err) {
+    console.error('Erro ao acessar mídia para atender:', err);
+    call.answer(); // Atende apenas recebendo
+  }
+
+  setupCallEvents(call);
 });
 
-// Ligar Câmera para a outra pessoa
+// Ligar Câmera + Áudio
 btnCall.addEventListener('click', async () => {
   const targetId = peerIdInput.value.trim();
   if (!targetId) return alert('Por favor, insira o ID da outra pessoa!');
 
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localVideo.srcObject = localStream;
-
-    const call = peer.call(targetId, localStream);
-    call.on('stream', (remoteStream) => {
-      remoteVideo.srcObject = remoteStream;
-    });
+    const stream = await getMediaStream(false);
+    const call = peer.call(targetId, stream);
+    currentCall = call;
+    setupCallEvents(call);
   } catch (err) {
-    alert('Erro ao acessar a câmera: ' + err.message);
+    alert('Erro ao acessar câmera e microfone: ' + err.message);
   }
 });
 
-// Compartilhar Tela (Assistir vídeos/jogos juntos)
+// Compartilhar Tela
 btnScreen.addEventListener('click', async () => {
   const targetId = peerIdInput.value.trim();
   if (!targetId) return alert('Por favor, insira o ID da outra pessoa!');
 
   try {
-    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-    localVideo.srcObject = screenStream;
-
-    const call = peer.call(targetId, screenStream);
-    call.on('stream', (remoteStream) => {
-      remoteVideo.srcObject = remoteStream;
-    });
+    const stream = await getMediaStream(true);
+    const call = peer.call(targetId, stream);
+    currentCall = call;
+    setupCallEvents(call);
   } catch (err) {
     console.error('Erro ao compartilhar tela:', err);
   }
 });
 
-// MODO PIP: Destaca o vídeo da outra pessoa e coloca flutuando por cima do Windows/Jogos
+// Configurar escuta do fluxo remoto
+function setupCallEvents(call) {
+  callControls.classList.remove('hidden');
+
+  call.on('stream', (remoteStream) => {
+    remoteVideo.srcObject = remoteStream;
+  });
+
+  call.on('close', () => {
+    endCallUI();
+  });
+}
+
+// Controles de Microfone e Câmera
+btnToggleMic.addEventListener('click', () => {
+  if (!localStream) return;
+  const audioTracks = localStream.getAudioTracks();
+  if (audioTracks.length > 0) {
+    isMicOn = !isMicOn;
+    audioTracks.forEach(track => track.enabled = isMicOn);
+    updateControlButtons();
+  }
+});
+
+btnToggleCam.addEventListener('click', () => {
+  if (!localStream) return;
+  const videoTracks = localStream.getVideoTracks();
+  if (videoTracks.length > 0) {
+    isCamOn = !isCamOn;
+    videoTracks.forEach(track => track.enabled = isCamOn);
+    updateControlButtons();
+  }
+});
+
+// Encerrar Chamada
+btnHangup.addEventListener('click', () => {
+  if (currentCall) currentCall.close();
+  endCallUI();
+});
+
+function endCallUI() {
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  localVideo.srcObject = null;
+  remoteVideo.srcObject = null;
+  callControls.classList.add('hidden');
+}
+
+function updateControlButtons() {
+  btnToggleMic.innerText = isMicOn ? '🎤 Mic On' : '🎙️ Mic Muted';
+  btnToggleMic.classList.toggle('off', !isMicOn);
+
+  btnToggleCam.innerText = isCamOn ? '📹 Cam On' : '📷 Cam Off';
+  btnToggleCam.classList.toggle('off', !isCamOn);
+}
+
+// PiP e Fullscreen
 btnPip.addEventListener('click', async () => {
   try {
     if (document.pictureInPictureElement) {
@@ -87,14 +173,13 @@ btnPip.addEventListener('click', async () => {
     } else if (remoteVideo.readyState >= 2) {
       await remoteVideo.requestPictureInPicture();
     } else {
-      alert('Aguarde o vídeo do parceiro carregar antes de ativar o modo flutuante!');
+      alert('Aguarde o vídeo carregar para ativar o modo flutuante!');
     }
   } catch (error) {
-    alert('Seu navegador não suporta a função Picture-in-Picture.');
+    alert('Navegador sem suporte a Picture-in-Picture.');
   }
 });
 
-// Modo Tela Cheia
 btnFullscreen.addEventListener('click', () => {
   const container = document.querySelector('.video-container');
   if (!document.fullscreenElement) {
