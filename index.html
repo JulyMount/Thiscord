@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thiscord Web</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Cabeçalho -->
+    <header class="header">
+      <h1 class="logo">⚡ Thiscord</h1>
+      <div class="header-actions">
+        <button id="btn-pip" title="Deixar vídeo flutuando por cima dos jogos">📌 Vídeo Flutuante (PiP)</button>
+        <button id="btn-fullscreen" title="Assistir em Tela Cheia">⛶ Tela Cheia</button>
+      </div>
+    </header>
+
+    <!-- Área de Exibição de Vídeo -->
+    <main class="video-container">
+      <video id="remote-video" autoplay playsinline></video>
+      <video id="local-video" autoplay playsinline muted></video>
+
+      <!-- Barra de Ações Rápida (Aparece durante a chamada) -->
+      <div id="call-controls" class="call-controls hidden">
+        <button id="btn-toggle-mic" class="ctrl-btn" title="Ligar/Desligar Microfone">🎤 Mic On</button>
+        <button id="btn-toggle-cam" class="ctrl-btn" title="Ligar/Desligar Câmera">📹 Cam On</button>
+        <button id="btn-hangup" class="ctrl-btn btn-danger" title="Encerrar Chamada">📞 Desligar</button>
+      </div>
+    </main>
+
+    <!-- Painel de Controles -->
+    <footer class="controls">
+      <div class="card id-card">
+        <span class="label">Seu ID de Conexão:</span>
+        <div class="id-wrapper">
+          <strong id="my-id">Gerando ID...</strong>
+          <button id="btn-copy">Copiar</button>
+        </div>
+      </div>
+
+      <div class="card connect-card">
+        <input type="text" id="peer-id-input" placeholder="Cole aqui o ID da pessoa que quer conectar">
+        <div class="btn-group">
+          <button id="btn-call" class="btn btn-primary">📹 Ligar Câmera + Áudio</button>
+          <button id="btn-screen" class="btn btn-secondary">🖥️ Compartilhar Tela</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
