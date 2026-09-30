@@ -76,7 +76,46 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-/* Controles */
+/* Controles Flutuantes da Chamada */
+.call-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 14px;
+  border-radius: 30px;
+  backdrop-filter: blur(8px);
+}
+
+.call-controls.hidden {
+  display: none;
+}
+
+.ctrl-btn {
+  background-color: #4e5058;
+  color: #fff;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ctrl-btn.off {
+  background-color: #da373c;
+}
+
+.btn-danger {
+  background-color: #da373c;
+}
+
+.btn-danger:hover {
+  background-color: #a1282b;
+}
+
+/* Painel de Configuração */
 .controls {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
@@ -140,7 +179,7 @@ button {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s, opacity 0.2s;
+  transition: all 0.2s;
   background-color: #4e5058;
   color: #fff;
 }
@@ -177,4 +216,4 @@ button:hover {
   .controls {
     grid-template-columns: 1fr;
   }
-} 
+}
